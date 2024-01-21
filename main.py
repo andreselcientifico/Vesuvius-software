@@ -93,32 +93,32 @@ class ImageProcessingApp():
         main_frame = ttk.Frame(root, padding=(20, 10))
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        # Sección Directorio de Imágenes
+        # Image Directory Section
         ttk.Label(main_frame, text="Directorio de Imágenes:").grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
         self.directory_entry = ttk.Entry(main_frame, textvariable=self.directory_path)
         self.directory_entry.grid(row=0, column=1, padx=10, pady=10, sticky=(tk.W, tk.E))
         ttk.Button(main_frame, text="Seleccionar Directorio", command=self.browse_directory, style="TButton").grid(row=0, column=2, padx=10, pady=10, sticky=tk.W)
 
-        # Sección Directorio del Modelo
+        # Model Directory Section
         ttk.Label(main_frame, text="Cargar pesos Preentrenado:").grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
         self.directory_entry = ttk.Entry(main_frame, textvariable=self.model_path)
         self.directory_entry.grid(row=1, column=1, padx=10, pady=10, sticky=(tk.W, tk.E))
         ttk.Button(main_frame, text="Seleccionar Directorio", command=self.abrir_archivo, style="TButton").grid(row=1, column=2, padx=10, pady=10, sticky=tk.W)
 
-        # Sección Nombre de Proyecto wandb
+        # Section Project Name wandb
         ttk.Label(main_frame, text="Nombre de proyecto wandb:").grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
         self.guardar_entry = ttk.Entry(main_frame, textvariable=self.wandb_project_name)
         self.guardar_entry.grid(row=2, column=1, padx=10, pady=10, sticky=(tk.W, tk.E))
         ttk.Button(main_frame, text="Guardar", command=self.browse_guardar_directory, style="TButton").grid(row=2, column=2, padx=10, pady=10, sticky=tk.W)
 
-        # Barra de progreso principal
+        # Main progress bar
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(main_frame, variable=self.progress_var, maximum=100)
         self.progress_bar.grid(row=3, column=0, columnspan=3, padx=10, pady=10, sticky=(tk.W, tk.E))
 
         ttk.Label(main_frame, text=f"Entrenando con un dispoditivo {self.device}").grid(row=8, column=0, padx=10, pady=5, sticky=tk.W)
 
-        # Etiquetas de progreso y tarea principal
+        # Progress and main task labels
         ttk.Label(main_frame, text="Progreso:").grid(row=4, column=0, padx=10, pady=5, sticky=tk.W)
         ttk.Label(main_frame, textvariable=self.porcentaje).grid(row=4, column=1, padx=10, pady=5, sticky=tk.W)
         ttk.Label(main_frame, textvariable=self.tarea).grid(row=4, column=2, padx=10, pady=5, sticky=tk.W)
@@ -128,10 +128,10 @@ class ImageProcessingApp():
         transpose_mask_checkbutton.grid(row=5, column=2, padx=10, pady=5, sticky=(tk.W, tk.E))
 
 
-        # Botones de procesamiento
+        # Processing buttons
         ttk.Button(main_frame, text="Procesar Imágenes a 64 x 64 e entrenar", command=self.train_autoencoder_async, style="TButton").grid(row=8, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E))
 
-        # botón de editar valores
+        # edit values button
         ttk.Button(main_frame, text="Editar Valores", command=self.editar_valores, style="TButton").grid(row=10, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E))
         ttk.Button(main_frame, text="Editar Valores train aug list", command=self.editar_valores_train_aug_list, style="TButton").grid(row=11, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E))
 
