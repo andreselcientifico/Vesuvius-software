@@ -435,33 +435,24 @@ class ImageProcessingApp():
         valid_xyxys = []
         print('reading ',fragment_id)
         image, mask,fragment_mask= self.read_image_mask(fragment_id,carpeta)
-        
+
         x1_list = list(range(0, image.shape[1]-256+1, 32))
         y1_list = list(range(0, image.shape[0]-256+1, 32))
 
-        yi_values = np.arange(0, 256, 64)
-        xi_values = np.arange(0, 256, 64)
-        yi, xi = np.meshgrid(yi_values, xi_values)
-        yi, xi = yi.ravel(), xi.ravel()
-
         # Iterate over positions to extract image patches
-        for a in y1_list:
-            for b in x1_list:
-                y1=a+yi
-                x1=b+xi
-                y2=y1+self.size.get()
-                x2=x1+self.size.get()
+        for y1 in y1_list:
+            for x1 in x1_list:
+                y2 = y1 + self.size.get()
+                x2 = x1 + self.size.get()
 
                 # Check if the patch meets criteria for inclusion
-                mask_slice = mask[a:a + 256, b:b + 256]
-                if not np.all(mask_slice < 0.05) and not np.any(mask_slice == 0):
+                mask_slice = mask[y1:y2, x1:x2]
+                if np.any(mask_slice == 0):
                     train_images.append(image[y1:y2, x1:x2])
                     train_masks.append(mask[y1:y2, x1:x2, None])
                     assert image[y1:y2, x1:x2].shape == (self.size.get(), self.size.get(), 30)
-                # If the dataset is for validation, also check fragment mask
-                if valid:
-                    fragment_mask_slice = fragment_mask[a:a + 256, b:b + 256]
-                    if not np.any(fragment_mask_slice == 0):
+                    # If the dataset is for validation, also check fragment mask
+                    if valid:
                         valid_images.append(image[y1:y2, x1:x2])
                         valid_masks.append(mask[y1:y2, x1:x2, None])
                         valid_xyxys.append([x1, y1, x2, y2])
