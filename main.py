@@ -346,7 +346,7 @@ class ImageProcessingApp():
             print("No valid path specified.")
             return []
         
-    def get_transforms(self,data):
+    def get_transforms(self,data = 'train'):
         #(Get transformations based on the data type)
         if data == 'train':
             aug = A.Compose(self.train_aug_list)
@@ -435,35 +435,37 @@ class ImageProcessingApp():
         valid_xyxys = []
         print('reading ',fragment_id)
         image, mask,fragment_mask= self.read_image_mask(fragment_id,carpeta)
-        mask = mask.astype('float32')
-        mask/=255
+        
         x1_list = list(range(0, image.shape[1]-256+1, 32))
         y1_list = list(range(0, image.shape[0]-256+1, 32))
+
+        yi_values = np.arange(0, 256, 64)
+        xi_values = np.arange(0, 256, 64)
+        yi, xi = np.meshgrid(yi_values, xi_values)
+        yi, xi = yi.ravel(), xi.ravel()
 
         # Iterate over positions to extract image patches
         for a in y1_list:
             for b in x1_list:
-                for yi in range(0,256,64):
-                    for xi in range(0,256,64):
-                        y1=a+yi
-                        x1=b+xi
-                        y2=y1+self.size.get()
-                        x2=x1+self.size.get()
+                y1=a+yi
+                x1=b+xi
+                y2=y1+self.size.get()
+                x2=x1+self.size.get()
 
-                        # Check if the patch meets criteria for inclusion
-                        if not np.all(mask[a:a + 256, b:b + 256]<0.05):
-                                if not np.any(mask[a:a+ 256, b:b + 256]==0):
-                                    train_images.append(image[y1:y2, x1:x2])
-                                    train_masks.append(mask[y1:y2, x1:x2, None])
-                                    assert image[y1:y2, x1:x2].shape==(self.size.get(),self.size.get(),30)
-                        # If the dataset is for validation, also check fragment mask
-                        if valid:
-                            if not np.any(fragment_mask[a:a + 256, b:b + 256]==0):
-                                    valid_images.append(image[y1:y2, x1:x2])
-                                    valid_masks.append(mask[y1:y2, x1:x2, None])
-
-                                    valid_xyxys.append([x1, y1, x2, y2])
-                                    assert image[y1:y2, x1:x2].shape==(self.size,self.size,30)
+                # Check if the patch meets criteria for inclusion
+                mask_slice = mask[a:a + 256, b:b + 256]
+                if not np.all(mask_slice < 0.05) and not np.any(mask_slice == 0):
+                    train_images.append(image[y1:y2, x1:x2])
+                    train_masks.append(mask[y1:y2, x1:x2, None])
+                    assert image[y1:y2, x1:x2].shape == (self.size.get(), self.size.get(), 30)
+                # If the dataset is for validation, also check fragment mask
+                if valid:
+                    fragment_mask_slice = fragment_mask[a:a + 256, b:b + 256]
+                    if not np.any(fragment_mask_slice == 0):
+                        valid_images.append(image[y1:y2, x1:x2])
+                        valid_masks.append(mask[y1:y2, x1:x2, None])
+                        valid_xyxys.append([x1, y1, x2, y2])
+                        assert image[y1:y2, x1:x2].shape == (self.size.get(), self.size.get(), 30)
 
         return train_images, train_masks, valid_images, valid_masks, valid_xyxys 
     
