@@ -1,8 +1,0 @@
-pred_shape:
-- 2936
-- 7914
-size: 64
-enc: i3d
-with_norm: false
-learning_rate: 2.0e-06
-wandb_logger: null
