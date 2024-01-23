@@ -340,11 +340,11 @@ class ImageProcessingApp():
                         # Trigger the training of the autoencoder
                         self.train_autoencoder(contenido,carpeta,valid_mask_gt)
                         if id_Ca == 1:
-                            self.model = RegressionPLModel.load_from_checkpoint(f"{self.path}/valid_epoch={self.num_epochs.get()-1}.ckpt",strict=False)
-                            print(f"The model was loaded: {self.path}/valid_epoch={self.num_epochs.get()-1}.ckpt")
+                            self.model = RegressionPLModel.load_from_checkpoint(f"{self.path}/model_weights/valid_epoch={self.num_epochs.get()-1}.ckpt",strict=False)
+                            print(f"The model was loaded: {self.path}/model_weights/valid_epoch={self.num_epochs.get()-1}.ckpt")
                         elif id_Ca > 1:
-                            self.model = RegressionPLModel.load_from_checkpoint(f"{self.path}/valid_epoch={self.num_epochs.get()-1}-v{id_Ca-1}.ckpt",strict=False)
-                            print(f"The model was loaded: {self.path}/valid_epoch={self.num_epochs.get()-1}-v{id_Ca-1}.ckpt")
+                            self.model = RegressionPLModel.load_from_checkpoint(f"{self.path}/model_weights/valid_epoch={self.num_epochs.get()-1}-v{id_Ca-1}.ckpt",strict=False)
+                            print(f"The model was loaded: {self.path}/model_weights/valid_epoch={self.num_epochs.get()-1}-v{id_Ca-1}.ckpt")
                         iter = 0
                     self.model_ = False
                         
@@ -553,7 +553,7 @@ class ImageProcessingApp():
             precision='16-mixed',
             gradient_clip_val=1.0,
             gradient_clip_algorithm="norm",
-            callbacks=[ModelCheckpoint(filename=f'valid_'+'{epoch}',dirpath='./',monitor='train/Arcface_loss',mode='min',save_top_k=self.num_epochs.get()),],
+            callbacks=[ModelCheckpoint(filename=f'valid_'+'{epoch}',dirpath='./model_weights/',monitor='train/Arcface_loss',mode='min',save_top_k=self.num_epochs.get()),],
             log_every_n_steps=10,
         )
 
