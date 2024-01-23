@@ -1,0 +1,8 @@
+enc: i3d
+learning_rate: 2.0e-06
+pred_shape: !!python/tuple
+- 2343
+- 2348
+size: 64
+wandb_logger: null
+with_norm: false

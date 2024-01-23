@@ -1,6 +1,8 @@
 from config.config import *
 from model.model import *
 
+torch.set_float32_matmul_precision('high') # medium or high
+
 Image.MAX_IMAGE_PIXELS = None
 
 plt.rcParams['image.cmap'] = 'gray' 
@@ -28,6 +30,7 @@ class ImageProcessingApp():
         self.transpose_mask = tk.BooleanVar()
 
         # Variables
+        self.model_ = True
         self.path = os.path.dirname(os.path.realpath(__file__))
         self.directory_path = tk.StringVar()
         self.size = tk.IntVar()
@@ -124,7 +127,7 @@ class ImageProcessingApp():
         ttk.Label(main_frame, textvariable=self.tarea).grid(row=4, column=2, padx=10, pady=5, sticky=tk.W)
 
         ttk.Label(main_frame, text="Valid list:").grid(row=5, column=0, padx=10, pady=5, sticky=tk.W)
-        transpose_mask_checkbutton = ttk.Checkbutton(main_frame, variable=self.transpose_mask)
+        transpose_mask_checkbutton = ttk.Checkbutton(main_frame, variable=self.valid)
         transpose_mask_checkbutton.grid(row=5, column=2, padx=10, pady=5, sticky=(tk.W, tk.E))
 
 
@@ -272,7 +275,7 @@ class ImageProcessingApp():
         directory_path = filedialog.askdirectory()
         if directory_path:
             self.directory_path.set(directory_path)
-            self.guardar_valores_en_archivo()  # Guardar los valores actualizados en el archivo
+            self.guardar_valores_en_archivo()  # Save the updated values to the file
 
     def abrir_archivo(self):
         #(Open file and update values)
@@ -284,11 +287,11 @@ class ImageProcessingApp():
     def browse_guardar_directory(self):
         #(Browse save directory and update values)
         self.wandb_project_name.set(self.guardar_entry.get())
-        self.guardar_valores_en_archivo()  # Guardar los valores actualizados en el archivo
+        self.guardar_valores_en_archivo()  # Save the updated values to the file
 
     def train_autoencoder_async(self):
         #(Start the training process asynchronously)
-        threading.Thread(target=self.dividir_imagenes).start()  # Iniciar el proceso en un hilo diferente
+        threading.Thread(target=self.dividir_imagenes).start()  # Start the process in a different thread
 
 
     def dividir_imagenes(self):
@@ -304,11 +307,9 @@ class ImageProcessingApp():
                 List: An empty list if an error occurs, otherwise, nothing.
         """
         ruta = self.directory_path.get()  # Get directory path from variable
-
-        # Load a pre-trained model if the path is provided
-        if self.model_path.get() != "":
+        if self.model_path.get() != "" and self.model_ == True:
             self.model = RegressionPLModel.load_from_checkpoint(self.model_path.get(),strict=False)
-        
+            print(f"The model was loaded: {self.model_path.get()}")
         # Check if a valid directory path is provided
         if ruta != "":
             try:
@@ -320,11 +321,12 @@ class ImageProcessingApp():
                 # Iterate over subfolders
                 for id_Ca, carpeta in enumerate(subcarpetas, start=1):
                     iter += 1
+                    # Load a pre-trained model if the path is provided
                     progreso_actual = (id_Ca / total_carpetas) * 100
                     # Update progress variables
                     self.porcentaje.set(f"{progreso_actual:.2f}%")
                     self.progress_var.set(progreso_actual)
-                    self.tarea.set(f"Carpeta {id_Ca}/{total_carpetas}")
+                    self.tarea.set(f"File {id_Ca}/{total_carpetas}")
 
                     # Process every 'num_carpetas_img' subfolders
                     if iter == self.num_carpetas_img.get():
@@ -337,7 +339,14 @@ class ImageProcessingApp():
                         self.model.to(self.device)
                         # Trigger the training of the autoencoder
                         self.train_autoencoder(contenido,carpeta,valid_mask_gt)
+                        if id_Ca == 1:
+                            self.model = RegressionPLModel.load_from_checkpoint(f"{self.path}/valid_epoch={self.num_epochs.get()-1}.ckpt",strict=False)
+                            print(f"The model was loaded: {self.path}/valid_epoch={self.num_epochs.get()-1}.ckpt")
+                        elif id_Ca > 1:
+                            self.model = RegressionPLModel.load_from_checkpoint(f"{self.path}/valid_epoch={self.num_epochs.get()-1}-v{id_Ca-1}.ckpt",strict=False)
+                            print(f"The model was loaded: {self.path}/valid_epoch={self.num_epochs.get()-1}-v{id_Ca-1}.ckpt")
                         iter = 0
+                    self.model_ = False
                         
             except OSError as e:
                 print(f"Error obtaining subfolders from {ruta}: {e}")
@@ -393,16 +402,15 @@ class ImageProcessingApp():
         images = np.stack(images, axis=2)
 
         # Read mask and fragment mask
-        mask = cv2.imread(f"{fragment_id}/{carpeta}_inklabels.png", 0)
+        mask = cv2.imread(f"{fragment_id}/{carpeta}.png", 0)
 
         fragment_mask=cv2.imread(f"{fragment_id}/{carpeta}_mask.png", 0)
         fragment_mask = np.pad(fragment_mask, [(0, pad0), (0, pad1)], constant_values=0)
 
         # Resize fragment mask and mask for specific cases
         kernel = np.ones((16,16),np.uint8)
-        if 'frag' in fragment_id:
-            fragment_mask = cv2.resize(fragment_mask, (fragment_mask.shape[1]//2,fragment_mask.shape[0]//2), interpolation = cv2.INTER_AREA)
-            mask = cv2.resize(mask , (mask.shape[1]//2,mask.shape[0]//2), interpolation = cv2.INTER_AREA)
+        fragment_mask = cv2.resize(fragment_mask, (fragment_mask.shape[1]//2,fragment_mask.shape[0]//2), interpolation = cv2.INTER_AREA)
+        mask = cv2.resize(mask , (mask.shape[1]//2,mask.shape[0]//2), interpolation = cv2.INTER_AREA)
 
         # Normalize the mask
         mask = mask.astype('float32')
@@ -438,25 +446,39 @@ class ImageProcessingApp():
 
         x1_list = list(range(0, image.shape[1]-256+1, 32))
         y1_list = list(range(0, image.shape[0]-256+1, 32))
+        
+        # Set to store coordinates of already added tiles
+        added_tiles = set()
 
         # Iterate over positions to extract image patches
-        for y1 in y1_list:
-            for x1 in x1_list:
-                y2 = y1 + self.size.get()
-                x2 = x1 + self.size.get()
+        for a in y1_list:
+            for b in x1_list:
+                for yi in range(0, 256, 64):
+                    for xi in range(0, 256, 64):
+                        y1 = a+yi
+                        x1 = b+xi
+                        y2 = y1 + self.size.get()
+                        x2 = x1 + self.size.get()
 
-                # Check if the patch meets criteria for inclusion
-                mask_slice = mask[y1:y2, x1:x2]
-                if np.any(mask_slice == 0):
-                    train_images.append(image[y1:y2, x1:x2])
-                    train_masks.append(mask[y1:y2, x1:x2, None])
-                    assert image[y1:y2, x1:x2].shape == (self.size.get(), self.size.get(), 30)
-                    # If the dataset is for validation, also check fragment mask
-                    if valid:
-                        valid_images.append(image[y1:y2, x1:x2])
-                        valid_masks.append(mask[y1:y2, x1:x2, None])
-                        valid_xyxys.append([x1, y1, x2, y2])
-                        assert image[y1:y2, x1:x2].shape == (self.size.get(), self.size.get(), 30)
+                        # Check if the patch meets the inclusion criteria and is not duplicate
+                        mask_slice = mask[a:a + 256, b:b + 256]
+                        fragment_mask_slice = fragment_mask[a:a + 256, b:b + 256]
+
+                        tile_coords = (y1, x1)
+
+                        # Check if the patch meets criteria for inclusion
+                        if not np.all(mask_slice < 0.005) and not np.any(fragment_mask_slice == 0) and tile_coords not in added_tiles:
+                            added_tiles.add(tile_coords)
+                            train_images.append(image[y1:y2, x1:x2])
+                            train_masks.append(mask[y1:y2, x1:x2, None])
+                            assert image[y1:y2, x1:x2].shape == (self.size.get(), self.size.get(), 30)
+
+                            # If the dataset is for validation, also check fragment mask
+                            if valid:
+                                    valid_images.append(image[y1:y2, x1:x2])
+                                    valid_masks.append(mask[y1:y2, x1:x2, None])
+                                    valid_xyxys.append([x1, y1, x2, y2])
+                                    assert image[y1:y2, x1:x2].shape == (self.size.get(), self.size.get(), 30)
 
         return train_images, train_masks, valid_images, valid_masks, valid_xyxys 
     
@@ -532,6 +554,7 @@ class ImageProcessingApp():
             gradient_clip_val=1.0,
             gradient_clip_algorithm="norm",
             callbacks=[ModelCheckpoint(filename=f'valid_'+'{epoch}',dirpath='./',monitor='train/Arcface_loss',mode='min',save_top_k=self.num_epochs.get()),],
+            log_every_n_steps=10,
         )
 
         # Train the model using PyTorch Lightning Trainer

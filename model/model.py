@@ -23,7 +23,7 @@ class GradualWarmupSchedulerV2(GradualWarmupScheduler):
                     self.after_scheduler.base_lrs = [
                         base_lr * self.multiplier for base_lr in self.base_lrs]
                     self.finished = True
-                return self.after_scheduler.get_lr()
+                return self.after_scheduler.get_last_lr()
             return [base_lr * self.multiplier for base_lr in self.base_lrs]
         if self.multiplier == 1.0:
             return [base_lr * (float(self.last_epoch) / self.total_epoch) for base_lr in self.base_lrs]
